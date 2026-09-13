@@ -1,0 +1,10 @@
+services:
+  leadfinder:
+    build: .
+    container_name: leadfinder
+    env_file: .env
+    ports:
+      - "127.0.0.1:8080:8080"   # put nginx/HTTPS in front; use "8080:8080" to expose directly
+    volumes:
+      - ./leads:/app/leads
+    restart: unless-stopped

@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lead Finder</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--ink:#1c2230;--mute:#667085;--line:#e4e7ec;--acc:#2f6fed;
+        --no:#d92d20;--weak:#dc6803;--has:#079455;--unk:#667085}
+  @media (prefers-color-scheme:dark){:root{--bg:#0f1218;--card:#171b23;--ink:#e6e9ef;--mute:#98a2b3;--line:#2a303b}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+  .wrap{max-width:1200px;margin:0 auto;padding:24px 16px}
+  h1{margin:0 0 4px;font-size:24px}
+  .sub{color:var(--mute);margin:0 0 20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+  .card h2{margin:0 0 12px;font-size:15px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+  label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute);flex:1;min-width:160px}
+  input,select,button{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+  button{background:var(--acc);color:#fff;border-color:var(--acc);cursor:pointer;white-space:nowrap}
+  button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  code.cmd{display:block;margin-top:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow-x:auto;white-space:nowrap}
+  .drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--mute);cursor:pointer}
+  .drop.over{border-color:var(--acc);color:var(--acc)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .stat b{display:block;font-size:22px}
+  .stat span{color:var(--mute);font-size:12px}
+  .tbl{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:900px}
+  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12px;color:var(--mute);cursor:pointer;user-select:none;white-space:nowrap}
+  tr.lead{cursor:pointer}
+  tr.lead:hover{background:var(--bg)}
+  .badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;color:#fff;white-space:nowrap}
+  .HOT{background:#d92d20}.WARM{background:#dc6803}.COLD{background:#667085}
+  .opps{margin:4px 0;padding-left:18px}.pitch{font-size:12px;color:var(--mute)}
+  .NO_WEBSITE{background:var(--no)}.WEAK_WEBSITE{background:var(--weak)}.HAS_WEBSITE{background:var(--has)}.UNKNOWN{background:var(--unk)}
+  .score{display:flex;align-items:center;gap:6px}
+  .bar{width:50px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--acc)}
+  a{color:var(--acc);text-decoration:none;word-break:break-all}
+  .detail td{background:var(--bg);font-size:13px}
+  .detail ul{margin:4px 0;padding-left:18px}
+  .muted{color:var(--mute)}
+  .empty{text-align:center;color:var(--mute);padding:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Lead Finder</h1>
+  <p class="sub">Find businesses that need a website, then review the results here.</p>
+
+  <div class="card">
+    <h2>1. Build a search command</h2>
+    <div class="row">
+      <label>Location<input id="loc" value="Singapore" placeholder="City or country"></label>
+      <label>Business category
+        <input id="cat" list="cats" value="salon" placeholder="e.g. salon">
+        <datalist id="cats">
+          <option>hotel</option><option>villa</option><option>guest house</option><option>clinic</option>
+          <option>dental clinic</option><option>construction</option><option>real estate</option>
+          <option>vehicle rental</option><option>wedding</option><option>tuition</option>
+          <option>photographer</option><option>gym</option><option>salon</option><option>restaurant</option>
+          <option>lawyer</option><option>accountant</option><option>manufacturer</option><option>import export</option>
+        </datalist>
+      </label>
+      <label style="max-width:120px">Leads<input id="num" type="number" min="1" value="30"></label>
+      <button id="run" hidden>Run search</button>
+      <button id="copy" class="ghost">Copy command</button>
+    </div>
+    <code class="cmd" id="cmd"></code>
+    <p class="muted" id="hint" style="margin:8px 0 0">Paste it into Terminal. Results are saved in <b>leads/&lt;date&gt;/</b>.</p>
+    <pre id="log" hidden style="margin:12px 0 0;max-height:260px;overflow:auto;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:12px;white-space:pre-wrap"></pre>
+  </div>
+
+  <div class="card">
+    <h2>2. Open results</h2>
+    <div class="row" style="margin-bottom:12px">
+      <label>Saved results (from leads/)
+        <select id="saved"><option value="">No saved results found — run a search, then reload</option></select>
+      </label>
+      <button class="ghost" id="reload">Reload list</button>
+    </div>
+    <div class="drop" id="drop">Or drop a <b>.json</b> results file here / click to choose one
+      <input type="file" id="file" accept=".json" hidden>
+    </div>
+  </div>
+
+  <div id="results" hidden>
+    <div class="stats" id="stats"></div>
+    <div class="card">
+      <div class="row" style="margin-bottom:12px">
+        <label>Search<input id="q" placeholder="Name, phone, location..."></label>
+        <label style="max-width:200px">Website status
+          <select id="status">
+            <option value="">All</option><option>NO_WEBSITE</option><option>WEAK_WEBSITE</option>
+            <option>HAS_WEBSITE</option><option>UNKNOWN</option>
+          </select>
+        </label>
+        <label style="max-width:150px">Priority
+          <select id="prio"><option value="">All</option><option>HOT</option><option>WARM</option><option>COLD</option></select>
+        </label>
+        <label style="max-width:140px">Min score<input id="min" type="number" min="0" max="100" value="0"></label>
+        <label style="max-width:170px">Contact
+          <select id="contact"><option value="">Any</option><option value="1">Has phone or email</option></select>
+        </label>
+        <button class="ghost" id="csv">Export CSV</button>
+      </div>
+      <div class="tbl">
+        <table>
+          <thead><tr>
+            <th data-k="lead_score">Score ↓</th><th data-k="name">Name</th><th data-k="website_status">Status</th>
+            <th data-k="priority">Priority</th><th>Best opportunity</th><th data-k="category">Category</th><th data-k="phone">Phone</th><th>Email</th><th>Links</th><th data-k="review_count">Reviews</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const shq = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
+
+// Command builder
+function buildCmd(){
+  const n = Math.max(1, parseInt($("num").value) || 20);
+  $("cmd").textContent = `cd "/Users/rukshantharindu/Documents/Personal/Compny/lead gen" && ./lead_finder.sh ${shq($("loc").value.trim())} ${shq($("cat").value.trim())} ${n}`;
+}
+["loc","cat","num"].forEach(id => $(id).addEventListener("input", buildCmd));
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText($("cmd").textContent); $("copy").textContent = "Copied!"; }
+  catch { $("copy").textContent = "Select & copy manually"; }
+  setTimeout(() => $("copy").textContent = "Copy command", 1500);
+};
+buildCmd();
+
+// Results viewer
+let leads = [], sortKey = "lead_score", sortDir = -1, open = null;
+
+const drop = $("drop");
+drop.onclick = () => $("file").click();
+$("file").onchange = e => e.target.files[0] && load(e.target.files[0]);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); e.dataTransfer.files[0] && load(e.dataTransfer.files[0]); };
+
+function show(data, name){
+  leads = data; open = null;
+  drop.innerHTML = `Showing <b>${esc(name)}</b> (${data.length} leads). Drop or click to open another file.`;
+  $("results").hidden = false;
+  render();
+}
+
+function load(file){
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      if (!Array.isArray(data)) throw new Error("Expected a list of leads");
+      $("saved").value = "";
+      show(data, file.name);
+    } catch (err) { alert("Could not read file: " + err.message); }
+  };
+  r.readAsText(file);
+}
+
+// ---- Server mode (server.py): run searches from the page ----
+let SERVER = false;
+
+async function detectServer(){
+  if (location.protocol === "file:") return false;
+  try { return (await fetch("api/files")).ok; } catch { return false; }
+}
+
+async function loadServerFiles(selectPath){
+  const files = await (await fetch("api/files")).json();
+  window.LEAD_FILES = files;
+  const sel = $("saved");
+  if (!files.length) { sel.innerHTML = '<option value="">No saved results yet — run a search</option>'; return; }
+  sel.innerHTML = files.map((f,i) =>
+    `<option value="${i}">${esc(f.date)} · ${esc(f.category || "?")} in ${esc(f.location || "?")} · ${f.count} leads</option>`).join("");
+  const idx = selectPath ? Math.max(0, files.findIndex(f => f.path === selectPath)) : 0;
+  sel.value = String(idx); pickSaved();
+}
+
+async function runSearch(){
+  const btn = $("run"), log = $("log");
+  const body = { location: $("loc").value.trim(), category: $("cat").value.trim(), limit: parseInt($("num").value) || 20 };
+  btn.disabled = true; btn.textContent = "Running…";
+  log.hidden = false; log.textContent = "";
+  try {
+    const res = await fetch("api/jobs", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to start");
+    let next = 0, job;
+    do {
+      await new Promise(r => setTimeout(r, 1500));
+      job = await (await fetch(`api/jobs/${data.id}?since=${next}`)).json();
+      if (job.log.length) { log.textContent += job.log.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
+      next = job.next;
+    } while (job.status === "running");
+    if (job.status === "done" && job.result) await loadServerFiles(job.result);
+    else log.textContent += "\nSearch did not produce results.";
+  } catch (err) {
+    log.textContent += "\nError: " + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Run search";
+  }
+}
+
+// Saved results from leads/manifest.js (regenerated by lead_finder.sh after every run)
+function loadManifest(selectFirst){
+  document.querySelectorAll("script[data-manifest]").forEach(s => s.remove());
+  const s = document.createElement("script");
+  s.src = "leads/manifest.js?t=" + Date.now();
+  s.dataset.manifest = "1";
+  s.onload = () => fillSaved(selectFirst);
+  s.onerror = () => fillSaved(false);
+  document.head.appendChild(s);
+}
+
+function fillSaved(selectFirst){
+  const files = window.LEAD_FILES || [];
+  const sel = $("saved");
+  if (!files.length) {
+    sel.innerHTML = '<option value="">No saved results found — run a search, then reload</option>';
+    return;
+  }
+  sel.innerHTML = files.map((f,i) =>
+    `<option value="${i}">${esc(f.date)} · ${esc(f.category || "?")} in ${esc(f.location || "?")} · ${f.count} leads</option>`
+  ).join("");
+  if (selectFirst) { sel.value = "0"; pickSaved(); }
+}
+
+async function pickSaved(){
+  const f = (window.LEAD_FILES || [])[+$("saved").value];
+  if (!f) return;
+  if (f.leads) return show(f.leads, f.path);
+  try { show(await (await fetch("api/file?path=" + encodeURIComponent(f.path))).json(), f.path); }
+  catch (err) { alert("Could not load " + f.path); }
+}
+
+$("saved").onchange = pickSaved;
+$("reload").onclick = () => SERVER ? loadServerFiles() : loadManifest(false);
+$("run").onclick = runSearch;
+
+detectServer().then(ok => {
+  SERVER = ok;
+  if (ok) {
+    $("run").hidden = false;
+    $("cmd").hidden = true;
+    $("hint").textContent = "Runs on the server. Large searches can take a few minutes.";
+    loadServerFiles();
+  } else {
+    loadManifest(true);
+  }
+});
+
+function filtered(){
+  const pr = $("prio").value, q = $("q").value.toLowerCase(), st = $("status").value, min = +$("min").value || 0, c = $("contact").value;
+  return leads.filter(l =>
+    (!st || l.website_status === st) && (!pr || l.priority === pr) &&
+    (l.lead_score ?? 0) >= min &&
+    (!c || l.phone || l.email) &&
+    (!q || [l.name,l.phone,l.email,l.location,l.category,(l.opportunities||[]).join(" ")].join(" ").toLowerCase().includes(q))
+  ).sort((a,b) => {
+    const x = a[sortKey] ?? "", y = b[sortKey] ?? "";
+    return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * sortDir;
+  });
+}
+
+function render(){
+  const count = s => leads.filter(l => l.website_status === s).length;
+  const avg = leads.length ? Math.round(leads.reduce((s,l) => s + (l.lead_score||0), 0) / leads.length) : 0;
+  $("stats").innerHTML = [
+    [leads.length,"Total leads"],[count("NO_WEBSITE"),"No website"],[count("WEAK_WEBSITE"),"Weak website"],
+    [count("HAS_WEBSITE"),"Has website"],[leads.filter(l=>l.priority==="HOT").length,"Hot leads"],[leads.filter(l=>l.phone||l.email).length,"With contact"],[avg,"Avg score"]
+  ].map(([v,t]) => `<div class="stat"><b>${v}</b><span>${t}</span></div>`).join("");
+
+  const list = filtered();
+  $("rows").innerHTML = list.length ? list.map((l,i) => {
+    const links = [
+      l.website && `<a href="${esc(l.website)}" target="_blank" rel="noopener">Website</a>`,
+      l.social_url && `<a href="${esc(l.social_url)}" target="_blank" rel="noopener">Social</a>`,
+      l.profile_url && `<a href="${esc(l.profile_url)}" target="_blank" rel="noopener">Profile</a>`
+    ].filter(Boolean).join(" · ") || '<span class="muted">—</span>';
+    const wc = l.website_check || {};
+    const detail = open === l ? `<tr class="detail"><td colspan="10">
+      <b>Location:</b> ${esc(l.location)}<br>
+      ${l.pitch ? `<b>Pitch:</b> ${esc(l.pitch)}<br>` : ""}
+      ${l.opportunities?.length ? `<b>Opportunities to pitch:</b><ul class="opps">${l.opportunities.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${l.review_signals?.length ? `<b>Review insights:</b> ${esc(l.review_signals.join(" · "))}<br>` : ""}
+      ${l.last_review_date ? `<b>Last review:</b> ${esc(l.last_review_date)}<br>` : ""}
+      ${l.photo_count != null ? `<b>Google photos:</b> ${esc(l.photo_count)} · Opening hours listed: ${l.has_hours ? "yes" : "no"}<br>` : ""}
+      ${l.socials?.length ? `<b>Social profiles:</b> ${l.socials.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>`).join(" · ")}<br>` : ""}
+      ${wc.tech ? `<b>Built with:</b> ${esc(wc.tech)}${wc.load_seconds ? ` · loads in ${(+wc.load_seconds).toFixed(1)}s` : ""}<br>` : ""}
+      ${wc.features ? `<b>Website missing:</b> ${esc(Object.entries(wc.features).filter(([,v])=>!v).map(([k])=>k.replace(/_/g," ")).join(", ") || "nothing major")}<br>` : ""}
+      ${l.rating ? `<b>Rating:</b> ${esc(l.rating)} (${esc(l.review_count)} reviews)<br>` : ""}
+      ${wc.http_status ? `<b>Website check:</b> HTTP ${esc(wc.http_status)} · HTTPS ${wc.https ? "yes" : "no"} · Title: ${esc(wc.title || "—")}<br>` : ""}
+      ${wc.issues?.length ? `<b>Issues:</b><ul>${wc.issues.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+      ${wc.note ? `<b>Note:</b> ${esc(wc.note)}<br>` : ""}
+      <b>Why this score:</b><ul>${(l.score_reasons||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+      <span class="muted">Source: ${esc(l.source)}</span>
+    </td></tr>` : "";
+    return `<tr class="lead" data-i="${i}">
+      <td><div class="score"><b>${esc(l.lead_score)}</b><div class="bar"><i style="width:${+l.lead_score||0}%"></i></div></div></td>
+      <td><b>${esc(l.name)}</b></td>
+      <td><span class="badge ${esc(l.website_status)}">${esc((l.website_status||"").replace("_"," "))}</span></td>
+      <td><span class="badge ${esc(l.priority)}">${esc(l.priority || "—")}</span></td>
+      <td>${esc((l.opportunities||[])[0] || "—")}${(l.opportunities||[]).length > 1 ? `<div class="pitch">+${l.opportunities.length-1} more</div>` : ""}</td>
+      <td>${esc(l.category)}</td>
+      <td>${l.phone ? `<a href="tel:${esc(l.phone)}">${esc(l.phone)}</a>` : '<span class="muted">—</span>'}</td>
+      <td>${l.email ? `<a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : '<span class="muted">—</span>'}</td>
+      <td>${links}</td>
+      <td>${esc(l.review_count ?? 0)}</td>
+    </tr>${detail}`;
+  }).join("") : `<tr><td colspan="10" class="empty">No leads match these filters.</td></tr>`;
+
+  $("rows").querySelectorAll("tr.lead").forEach(tr => tr.onclick = e => {
+    if (e.target.closest("a")) return;
+    const l = list[+tr.dataset.i]; open = open === l ? null : l; render();
+  });
+  document.querySelectorAll("th[data-k]").forEach(th => {
+    th.textContent = th.textContent.replace(/ [↑↓]$/, "") + (th.dataset.k === sortKey ? (sortDir < 0 ? " ↓" : " ↑") : "");
+  });
+}
+
+document.querySelectorAll("th[data-k]").forEach(th => th.onclick = () => {
+  if (sortKey === th.dataset.k) sortDir *= -1; else { sortKey = th.dataset.k; sortDir = th.dataset.k === "lead_score" || th.dataset.k === "review_count" ? -1 : 1; }
+  render();
+});
+["q","status","prio","min","contact"].forEach(id => $(id).addEventListener("input", render));
+
+$("csv").onclick = () => {
+  const cols = ["priority","pitch","name","category","location","website","website_status","lead_score","phone","email","profile_url","social_url","rating","review_count","opportunities"];
+  const cell = v => `"${String(Array.isArray(v) ? v.join("; ") : v ?? "").replace(/"/g,'""')}"`;
+  const csv = [cols.join(","), ...filtered().map(l => cols.map(c => cell(l[c])).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+  a.download = "filtered_leads.csv"; a.click();
+};
+</script>
+</body>
+</html>

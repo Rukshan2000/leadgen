@@ -1,0 +1,6 @@
+.env
+.git
+.DS_Store
+leads/*
+!leads/.gitkeep
+deploy/

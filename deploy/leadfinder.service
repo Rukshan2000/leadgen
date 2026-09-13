@@ -1,0 +1,14 @@
+[Unit]
+Description=Lead Finder web app
+After=network-online.target
+
+[Service]
+User=leadfinder
+WorkingDirectory=/opt/lead-finder
+EnvironmentFile=/opt/lead-finder/.env
+Environment=HOST=127.0.0.1 PORT=8080
+ExecStart=/usr/bin/python3 /opt/lead-finder/server.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
