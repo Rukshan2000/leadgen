@@ -9,6 +9,7 @@ Serves index.html, runs lead_finder.sh jobs, and exposes saved results.
 Put it behind nginx + HTTPS on a VPS (see README). Basic auth is required.
 """
 import base64
+import hashlib
 import hmac
 import json
 import os
@@ -19,6 +20,7 @@ import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent
@@ -37,6 +39,24 @@ USER = os.environ.get("APP_USER", "admin")
 PASSWORD = os.environ.get("APP_PASSWORD", "")
 MAX_LEADS = int(os.environ.get("MAX_LEADS", "200"))
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+# Sessions: signed cookie "<expiry>.<hmac>". The key is derived from the password,
+# so changing APP_PASSWORD (or SESSION_SECRET) logs everyone out. Survives restarts.
+COOKIE = "lf_session"
+SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "7"))
+SESSION_KEY = hashlib.sha256(f"{os.environ.get('SESSION_SECRET', '')}|{USER}|{PASSWORD}".encode()).digest()
+FAILED = {}                      # ip -> [timestamps of failed logins]
+MAX_FAILS, FAIL_WINDOW = 5, 600  # 5 failures per 10 minutes, per IP
+fail_lock = threading.Lock()
+
+
+def sign(expiry):
+    return hmac.new(SESSION_KEY, str(expiry).encode(), hashlib.sha256).hexdigest()
+
+
+def valid_session(token):
+    expiry, _, sig = (token or "").partition(".")
+    return expiry.isdigit() and int(expiry) > time.time() and hmac.compare_digest(sig, sign(expiry))
 
 WA_MARKS = LEADS / "whatsapp_marks.json"   # number -> {"on_whatsapp": "yes"|"no", "contacted": "YYYY-MM-DD"}
 WA_VALUES = {"on_whatsapp": {"", "yes", "no"}, "contacted": None}
@@ -112,8 +132,17 @@ class Handler(BaseHTTPRequestHandler):
         print(f"{self.address_string()} - {fmt % args}", flush=True)
 
     # --- helpers -----------------------------------------------------------
+    def client_ip(self):
+        return self.headers.get("X-Real-IP") or self.client_address[0]
+
+    def is_https(self):
+        return self.headers.get("X-Forwarded-Proto") == "https"
+
     def authorized(self):
-        header = self.headers.get("Authorization", "")
+        cookie = SimpleCookie(self.headers.get("Cookie", ""))
+        if COOKIE in cookie and valid_session(cookie[COOKIE].value):
+            return True
+        header = self.headers.get("Authorization", "")  # Basic auth still works for scripts/curl
         if header.startswith("Basic "):
             try:
                 user, _, pw = base64.b64decode(header[6:]).decode().partition(":")
@@ -122,7 +151,7 @@ class Handler(BaseHTTPRequestHandler):
             return hmac.compare_digest(user, USER) and hmac.compare_digest(pw, PASSWORD)
         return False
 
-    def send(self, code, body, ctype="application/json"):
+    def send(self, code, body, ctype="application/json", headers=()):
         if not isinstance(body, bytes):
             body = json.dumps(body).encode()
         self.send_response(code)
@@ -130,23 +159,65 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        for k, v in headers:
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
+
+    def redirect(self, location):
+        self.send_response(302)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def guard(self):
         if self.authorized():
             return True
-        self.send_response(401)
-        self.send_header("WWW-Authenticate", 'Basic realm="Lead Finder"')
-        self.send_header("Content-Length", "0")
-        self.end_headers()
+        if urlparse(self.path).path.startswith("/api/"):
+            self.send(401, {"error": "Please log in"})
+        else:
+            self.redirect("login")
         return False
+
+    def set_cookie(self, value, max_age):
+        secure = "; Secure" if self.is_https() else ""
+        return ("Set-Cookie", f"{COOKIE}={value}; Path=/; Max-Age={max_age}; HttpOnly; SameSite=Strict{secure}")
+
+    def login(self):
+        ip, now = self.client_ip(), time.time()
+        with fail_lock:
+            recent = [t for t in FAILED.get(ip, []) if now - t < FAIL_WINDOW]
+            FAILED[ip] = recent
+            if len(recent) >= MAX_FAILS:
+                wait = int(FAIL_WINDOW - (now - recent[0])) // 60 + 1
+                return self.send(429, {"error": f"Too many attempts. Try again in {wait} min."})
+        try:
+            length = min(int(self.headers.get("Content-Length", 0)), 2_000)
+            body = json.loads(self.rfile.read(length) or b"{}")
+            user, pw = str(body.get("username", "")), str(body.get("password", ""))
+        except (ValueError, TypeError):
+            return self.send(400, {"error": "Invalid request"})
+        if hmac.compare_digest(user, USER) and hmac.compare_digest(pw, PASSWORD):
+            with fail_lock:
+                FAILED.pop(ip, None)
+            days = SESSION_DAYS if body.get("remember") else 1
+            expiry = int(now) + days * 86400
+            return self.send(200, {"ok": True}, headers=[self.set_cookie(f"{expiry}.{sign(expiry)}", days * 86400)])
+        with fail_lock:
+            FAILED.setdefault(ip, []).append(now)
+        time.sleep(1)  # slow down guessing
+        self.send(401, {"error": "Wrong username or password"})
 
     # --- routes ------------------------------------------------------------
     def do_GET(self):
+        url = urlparse(self.path)
+        if url.path in ("/login", "/login.html"):
+            if self.authorized():
+                return self.redirect("./")
+            return self.send(200, (ROOT / "login.html").read_bytes(), "text/html; charset=utf-8")
         if not self.guard():
             return
-        url = urlparse(self.path)
         if url.path in ("/", "/index.html"):
             return self.send(200, (ROOT / "index.html").read_bytes(), "text/html; charset=utf-8")
         if url.path == "/api/whatsapp":
@@ -173,9 +244,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send(404, {"error": "not found"})
 
     def do_POST(self):
+        path = urlparse(self.path).path
+        if path == "/api/login":
+            return self.login()
+        if path == "/api/logout":
+            return self.send(200, {"ok": True}, headers=[self.set_cookie("", 0)])
         if not self.guard():
             return
-        path = urlparse(self.path).path
         if path == "/api/clean":
             return self.clean()
         if path == "/api/whatsapp":

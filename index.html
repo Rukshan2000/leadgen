@@ -27,6 +27,8 @@
   .recent a span{display:block;font-size:11px;color:var(--side-mute)}
   .recent a.active{background:var(--side-hover);box-shadow:inset 3px 0 0 var(--acc)}
   .side-foot{margin-top:auto;font-size:11px;color:var(--side-mute);padding:0 10px}
+  .logout{display:block;width:100%;margin-bottom:12px;text-align:left;background:transparent;color:var(--side-ink);border:1px solid rgba(255,255,255,.12)}
+  .logout:hover{background:var(--side-hover)}
 
   /* Main */
   .main{padding:28px 32px;min-width:0}
@@ -120,7 +122,10 @@
       <div class="nav-title">Recent</div>
       <div id="recent"><span class="muted" style="padding:0 10px;font-size:12px">No searches yet</span></div>
     </div>
-    <div class="side-foot">Results are stored in <b>leads/&lt;date&gt;/</b></div>
+    <div class="side-foot">
+      <button class="logout" id="logout" hidden>↪ Sign out</button>
+      Results are stored in <b>leads/&lt;date&gt;/</b>
+    </div>
   </aside>
 
   <main class="main">
@@ -262,6 +267,14 @@
 
 <script>
 const $ = id => document.getElementById(id);
+
+// Session expired or not logged in -> go to the login page (server mode only).
+const _fetch = window.fetch.bind(window);
+window.fetch = async (...args) => {
+  const res = await _fetch(...args);
+  if (res.status === 401 && location.protocol !== "file:") location.replace("login");
+  return res;
+};
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const shq = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
 
@@ -580,10 +593,15 @@ function renderWa(){
 ["waQ","waStatus","waMark"].forEach(id => $(id).addEventListener("input", renderWa));
 $("cleanRun").onclick = () => cleanUp(false);
 
+$("logout").onclick = async () => {
+  try { await fetch("api/logout", { method: "POST" }); } finally { location.replace("login"); }
+};
+
 detectServer().then(ok => {
   SERVER = ok;
   loadMarks();
   if (ok) {
+    $("logout").hidden = false;
     $("run").disabled = false;
     $("cleanCard").hidden = false;
     $("hint").textContent = "Runs on the server. Large searches can take a few minutes.";

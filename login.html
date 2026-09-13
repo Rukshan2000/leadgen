@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sign in · Lead Finder</title>
+<style>
+  :root{--bg:#f4f5f7;--card:#fff;--ink:#1c2230;--mute:#667085;--line:#e4e7ec;--acc:#2f6fed;--acc2:#7c3aed;--err:#d92d20;--err-bg:#fef3f2}
+  @media (prefers-color-scheme:dark){:root{--bg:#0f1218;--card:#171b23;--ink:#e6e9ef;--mute:#98a2b3;--line:#2a303b;--err-bg:#2a1512}}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;display:grid;grid-template-columns:1.1fr 1fr}
+
+  /* Brand panel */
+  .brand{position:relative;overflow:hidden;background:linear-gradient(135deg,#0b1220 0%,#111a33 55%,#1d1450 100%);color:#fff;padding:48px 56px;display:flex;flex-direction:column;justify-content:space-between}
+  .brand::before,.brand::after{content:"";position:absolute;border-radius:50%;filter:blur(60px);opacity:.55}
+  .brand::before{width:420px;height:420px;background:var(--acc);top:-120px;right:-120px}
+  .brand::after{width:360px;height:360px;background:var(--acc2);bottom:-140px;left:-100px}
+  .brand > *{position:relative;z-index:1}
+  .logo{display:flex;align-items:center;gap:12px;font-weight:700;font-size:18px;letter-spacing:.01em}
+  .logo i{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-style:normal;font-size:20px;box-shadow:0 8px 24px rgba(47,111,237,.4)}
+  .logo small{display:block;font-weight:500;font-size:12px;color:#aab4c8;letter-spacing:.08em;text-transform:uppercase}
+  .pitch h1{font-size:38px;line-height:1.15;margin:0 0 16px;max-width:460px}
+  .pitch h1 span{background:linear-gradient(90deg,#8fb3ff,#c4a8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .pitch p{color:#c3cad8;max-width:430px;margin:0 0 28px}
+  .features{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+  .features li{display:flex;align-items:center;gap:12px;color:#dde3ee}
+  .features b{width:34px;height:34px;flex:none;border-radius:9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);display:grid;place-items:center;font-weight:400}
+  .foot{font-size:12px;color:#8b95a8}
+
+  /* Form panel */
+  .panel{display:grid;place-items:center;padding:32px 24px;min-width:0}
+  .card{width:100%;max-width:380px}
+  .card h2{font-size:26px;margin:0 0 6px}
+  .card .sub{color:var(--mute);margin:0 0 28px}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 6px}
+  .field{position:relative;margin-bottom:18px}
+  .field .ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--mute);pointer-events:none;font-size:15px}
+  input[type=text],input[type=password]{width:100%;font:inherit;padding:11px 42px 11px 38px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);transition:border-color .15s,box-shadow .15s}
+  input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 4px rgba(47,111,237,.15)}
+  .toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--mute);cursor:pointer;padding:6px 8px;border-radius:6px;font:inherit;font-size:13px}
+  .toggle:hover{color:var(--ink)}
+  .row{display:flex;justify-content:space-between;align-items:center;margin:4px 0 22px;font-size:14px}
+  .check{display:flex;align-items:center;gap:8px;font-weight:400;margin:0;cursor:pointer;color:var(--mute)}
+  .check input{width:16px;height:16px;accent-color:var(--acc)}
+  .caps{color:#dc6803;font-size:12px}
+  button.submit{width:100%;font:inherit;font-weight:600;padding:12px;border:0;border-radius:10px;color:#fff;cursor:pointer;background:linear-gradient(90deg,var(--acc),var(--acc2));box-shadow:0 8px 20px rgba(47,111,237,.3);transition:transform .1s,opacity .15s;display:flex;justify-content:center;align-items:center;gap:8px}
+  button.submit:hover{transform:translateY(-1px)}
+  button.submit:disabled{opacity:.7;cursor:wait;transform:none}
+  .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error{display:flex;gap:8px;align-items:flex-start;background:var(--err-bg);color:var(--err);border:1px solid color-mix(in srgb,var(--err) 30%,transparent);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:18px}
+  [hidden]{display:none!important}
+  .shake{animation:shake .35s}
+  @keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+  .secure{margin-top:22px;text-align:center;font-size:12px;color:var(--mute)}
+
+  @media (max-width:860px){
+    body{grid-template-columns:minmax(0,1fr)}
+    .brand{padding:28px 20px}
+    .pitch h1{font-size:26px}
+    .pitch p,.features,.foot{display:none}
+    .panel{padding:32px 20px;place-items:start center}
+  }
+</style>
+</head>
+<body>
+  <section class="brand">
+    <div class="logo"><i>🎯</i><div>Lead Finder<small>by KWINGS MEDIA</small></div></div>
+    <div class="pitch">
+      <h1>Find businesses that <span>need you</span>.</h1>
+      <p>Discover local businesses with no website or an outdated one, see exactly what to pitch, and reach them on WhatsApp in one click.</p>
+      <ul class="features">
+        <li><b>🔍</b> Smart search with lead scoring</li>
+        <li><b>💡</b> Opportunities &amp; ready-made pitches</li>
+        <li><b>💬</b> Personalised WhatsApp outreach</li>
+      </ul>
+    </div>
+    <div class="foot">© KWINGS MEDIA · www.kwingsmedia.com</div>
+  </section>
+
+  <main class="panel">
+    <form class="card" id="form" novalidate>
+      <h2>Welcome back 👋</h2>
+      <p class="sub">Sign in to continue to your dashboard.</p>
+
+      <div class="error" id="error" role="alert" hidden><span>⚠️</span><span id="errorText"></span></div>
+
+      <label for="username">Username</label>
+      <div class="field">
+        <span class="ico">👤</span>
+        <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+      </div>
+
+      <label for="password">Password</label>
+      <div class="field">
+        <span class="ico">🔒</span>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+        <button type="button" class="toggle" id="toggle" aria-label="Show password">Show</button>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" id="remember" checked> Keep me signed in</label>
+        <span class="caps" id="caps" hidden>⇪ Caps Lock is on</span>
+      </div>
+
+      <button class="submit" id="submit" type="submit">Sign in</button>
+      <p class="secure">🔐 Secured connection · Sessions expire automatically</p>
+    </form>
+  </main>
+
+<script>
+const $ = id => document.getElementById(id);
+const form = $("form"), btn = $("submit");
+
+$("toggle").onclick = () => {
+  const show = $("password").type === "password";
+  $("password").type = show ? "text" : "password";
+  $("toggle").textContent = show ? "Hide" : "Show";
+  $("toggle").setAttribute("aria-label", show ? "Hide password" : "Show password");
+  $("password").focus();
+};
+
+["username", "password"].forEach(id => $(id).addEventListener("keyup", e => {
+  if (e.getModifierState) $("caps").hidden = !e.getModifierState("CapsLock");
+}));
+
+function showError(msg){
+  $("errorText").textContent = msg;
+  $("error").hidden = false;
+  form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+}
+
+form.onsubmit = async e => {
+  e.preventDefault();
+  const username = $("username").value.trim(), password = $("password").value;
+  if (!username || !password) return showError("Enter your username and password.");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Signing in…';
+  $("error").hidden = true;
+  try {
+    const res = await fetch("api/login", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ username, password, remember: $("remember").checked })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Sign in failed. Please try again.");
+    btn.innerHTML = "✓ Signed in";
+    location.replace("./");
+  } catch (err) {
+    showError(err.message === "Failed to fetch" ? "Can't reach the server. Check your connection." : err.message);
+    $("password").select();
+    btn.disabled = false;
+    btn.textContent = "Sign in";
+  }
+};
+</script>
+</body>
+</html>
