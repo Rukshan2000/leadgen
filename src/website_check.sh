@@ -19,7 +19,9 @@ check_website() {
   # A social-media page listed as "website" is not a real website.
   if printf '%s' "$url" | grep -Eiq "$SOCIAL_HOST_RX"; then
     printf '%s' "$lead" | jq -c --arg u "$url" '
-      .social_url = (if .social_url=="" then $u else .social_url end)
+      ($u | capture("(wa\\.me/|phone=)\\+?(?<n>[0-9]{8,15})").n // "") as $wanum
+      | .whatsapp = (if (.whatsapp // "") == "" and $wanum != "" then "+" + $wanum else (.whatsapp // "") end)
+      | .social_url = (if .social_url=="" then $u else .social_url end)
       | .socials = ((.socials // []) + [$u] | unique)
       | .website = "" | .website_status="NO_WEBSITE"
       | .website_check={note:"listed website is a social media page"}'
@@ -100,9 +102,11 @@ check_website() {
            | tr '[:upper:]' '[:lower:]' | sort -u | head -3 | paste -sd'|' -)
   socials=$(grep -Eio 'https?://(www\.)?(facebook|instagram|linkedin|tiktok|youtube)\.com/[^"'"'"' <>?#]+' "$flat" \
             | grep -Eiv '/sharer|/share|/plugins|/tr$|/dialog' | sort -u | head -5 | paste -sd'|' -)
+  local wa_num
+  wa_num=$(grep -Eio '(wa\.me/|api\.whatsapp\.com/send/?\?phone=)\+?[0-9]{8,15}' "$flat" | head -1 | grep -Eo '[0-9]{8,15}')
   rm -f "$body" "$flat"
 
-  printf '%s' "$lead" | jq -c --arg code "$code" --arg https "$https_ok" --arg title "$title" \
+  printf '%s' "$lead" | jq -c --arg wanum "$wa_num" --arg code "$code" --arg https "$https_ok" --arg title "$title" \
       --arg final "$final" --arg issues "$issues" --arg secs "$secs" --arg tech "$tech" \
       --arg emails "$emails" --arg socials "$socials" \
       --argjson booking "$f_booking" --argjson shop "$f_shop" --argjson form "$f_form" \
@@ -115,6 +119,7 @@ check_website() {
     | .website_status = (if ($iss|length) >= 2 then "WEAK_WEBSITE" else "HAS_WEBSITE" end)
     | .email = (if .email == "" and ($em|length) > 0 then $em[0] else .email end)
     | .emails_found = $em
+    | .whatsapp = (if (.whatsapp // "") == "" and $wanum != "" then "+" + $wanum else (.whatsapp // "") end)
     | .socials = ((.socials // []) + $so | unique)
     | .social_url = (if .social_url == "" and ($so|length) > 0 then $so[0] else .social_url end)
     | .website_check = {reachable:true, http_status:$code, https:($https=="true"),

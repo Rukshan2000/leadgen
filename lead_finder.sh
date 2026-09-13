@@ -11,6 +11,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 . "$ROOT/src/website_check.sh"
 . "$ROOT/src/scoring.sh"
 . "$ROOT/src/output.sh"
+. "$ROOT/src/whatsapp.sh"
 
 for dep in curl jq; do
   command -v "$dep" >/dev/null 2>&1 || { err "'$dep' is required. Install it (e.g. brew install $dep)."; exit 1; }
@@ -80,6 +81,7 @@ jq -s --argjson n "$LIMIT" --argjson min "$MIN_SCORE" --arg loc "$LOCATION" --ar
           search_location:$loc, search_category:$cat})' \
   "$WORK/scored.jsonl" > "$WORK/final.json"
 
+whatsapp_enrich "$WORK/final.json" "$LOCATION"
 COUNT=$(jq length "$WORK/final.json")
 [ "$COUNT" -lt "$LIMIT" ] && warn "Only $COUNT leads available (requested $LIMIT)."
 
@@ -88,4 +90,7 @@ OUT_DIR="$ROOT/leads/$(date +%Y-%m-%d)"
 write_outputs "$WORK/final.json" "$OUT_DIR" "${SLUG}_$(date +%H%M%S)"
 
 # Auto-cleanup of old results (LEADS_RETENTION_DAYS, 0 = keep forever).
-"$ROOT/clean_leads.sh" "${LEADS_RETENTION_DAYS:-30}"
+if [ "${LEADS_RETENTION_DAYS:-30}" -gt 0 ] 2>/dev/null; then
+  "$ROOT/clean_leads.sh" "${LEADS_RETENTION_DAYS:-30}"
+fi
+exit 0

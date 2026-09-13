@@ -9,26 +9,31 @@ write_outputs() {
 
   jq '.' "$in" > "$json"
 
-  jq -r '
-    ["priority","lead_score","name","category","location","website_status","pitch","opportunities",
-     "phone","email","whatsapp","website","social_url","other_socials","profile_url","rating","review_count",
-     "last_review_date","review_signals","photo_count","http_status","https","load_seconds","tech",
-     "page_title","website_issues","missing_features","score_reasons","source"],
-    (.[] | (.website_check // {}) as $wc | [
-      .priority, .lead_score, .name, .category, .location, .website_status, .pitch,
-      ((.opportunities // []) | join("; ")),
-      .phone, .email, .whatsapp, .website, .social_url, ((.socials // []) | join(" ")), .profile_url,
-      (.rating // ""), .review_count, .last_review_date, ((.review_signals // []) | join("; ")),
-      (.photo_count // ""), ($wc.http_status // ""), ($wc.https // ""), ($wc.load_seconds // ""),
-      ($wc.tech // ""), ($wc.title // ""), (($wc.issues // []) | join("; ")),
-      (($wc.features // {}) | to_entries | map(select(.value == false) | .key) | join("; ")),
-      ((.score_reasons // []) | join("; ")), .source ])
-    | @csv' "$in" > "$csv"
+  write_csv "$in" "$csv"
 
   print_table "$in"
   ok "JSON saved: $json"
   ok "CSV  saved: $csv"
   build_manifest "$(dirname "$dir")"
+}
+
+# write_csv LEADS_JSON_FILE CSV_FILE
+write_csv() {
+  jq -r '
+    ["priority","lead_score","name","category","location","website_status","pitch","opportunities",
+     "phone","email","whatsapp","wa_status","wa_link","website","social_url","other_socials","profile_url","rating","review_count",
+     "last_review_date","review_signals","photo_count","http_status","https","load_seconds","tech",
+     "page_title","website_issues","missing_features","score_reasons","source"],
+    (.[] | (.website_check // {}) as $wc | [
+      .priority, .lead_score, .name, .category, .location, .website_status, .pitch,
+      ((.opportunities // []) | join("; ")),
+      .phone, .email, .whatsapp, (.wa_status // ""), (.wa_link // ""), .website, .social_url, ((.socials // []) | join(" ")), .profile_url,
+      (.rating // ""), .review_count, .last_review_date, ((.review_signals // []) | join("; ")),
+      (.photo_count // ""), ($wc.http_status // ""), ($wc.https // ""), ($wc.load_seconds // ""),
+      ($wc.tech // ""), ($wc.title // ""), (($wc.issues // []) | join("; ")),
+      (($wc.features // {}) | to_entries | map(select(.value == false) | .key) | join("; ")),
+      ((.score_reasons // []) | join("; ")), .source ])
+    | @csv' "$1" > "$2"
 }
 
 # build_manifest LEADS_ROOT

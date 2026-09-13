@@ -23,12 +23,24 @@ from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent
 LEADS = ROOT / "leads"
+
+# Load .env (KEY=value lines); real environment variables take precedence.
+if (ROOT / ".env").is_file():
+    for raw in (ROOT / ".env").read_text().splitlines():
+        key, sep, val = raw.strip().partition("=")
+        if sep and key and not key.startswith("#"):
+            os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
+
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "8080"))
 USER = os.environ.get("APP_USER", "admin")
 PASSWORD = os.environ.get("APP_PASSWORD", "")
 MAX_LEADS = int(os.environ.get("MAX_LEADS", "200"))
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+WA_MARKS = LEADS / "whatsapp_marks.json"   # number -> {"on_whatsapp": "yes"|"no", "contacted": "YYYY-MM-DD"}
+WA_VALUES = {"on_whatsapp": {"", "yes", "no"}, "contacted": None}
+marks_lock = threading.Lock()
 
 jobs = {}            # id -> job dict
 jobs_lock = threading.Lock()
@@ -66,6 +78,13 @@ def run_job(job):
         job["log"].append(f"[server error] {exc}")
         job["status"] = "failed"
     job["finished"] = time.time()
+
+
+def read_marks():
+    try:
+        return json.loads(WA_MARKS.read_text())
+    except (OSError, ValueError):
+        return {}
 
 
 def list_results():
@@ -130,6 +149,9 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path in ("/", "/index.html"):
             return self.send(200, (ROOT / "index.html").read_bytes(), "text/html; charset=utf-8")
+        if url.path == "/api/whatsapp":
+            with marks_lock:
+                return self.send(200, read_marks())
         if url.path == "/api/files":
             return self.send(200, list_results())
         if url.path == "/api/file":
@@ -153,7 +175,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.guard():
             return
-        if urlparse(self.path).path != "/api/jobs":
+        path = urlparse(self.path).path
+        if path == "/api/clean":
+            return self.clean()
+        if path == "/api/whatsapp":
+            return self.mark_whatsapp()
+        if path != "/api/jobs":
             return self.send(404, {"error": "not found"})
         try:
             length = min(int(self.headers.get("Content-Length", 0)), 10_000)
@@ -174,6 +201,57 @@ class Handler(BaseHTTPRequestHandler):
             jobs[job["id"]] = job
         threading.Thread(target=run_job, args=(job,), daemon=True).start()
         self.send(202, {"id": job["id"]})
+
+    def mark_whatsapp(self):
+        """Save what you found when opening a chat: on WhatsApp yes/no, contacted date."""
+        try:
+            length = min(int(self.headers.get("Content-Length", 0)), 1_000)
+            body = json.loads(self.rfile.read(length) or b"{}")
+            number = str(body.get("number", ""))
+            field, value = body.get("field"), str(body.get("value", ""))
+            if not re.fullmatch(r"[0-9]{8,15}", number):
+                raise ValueError("Invalid number")
+            if field not in WA_VALUES:
+                raise ValueError("Invalid field")
+            if field == "on_whatsapp" and value not in WA_VALUES[field]:
+                raise ValueError("Invalid value")
+            if field == "contacted" and value and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                raise ValueError("Invalid date")
+        except (ValueError, TypeError) as exc:
+            return self.send(400, {"error": str(exc)})
+        with marks_lock:
+            marks = read_marks()
+            entry = marks.get(number, {})
+            if value:
+                entry[field] = value
+            else:
+                entry.pop(field, None)
+            if entry:
+                marks[number] = entry
+            else:
+                marks.pop(number, None)
+            tmp = WA_MARKS.with_suffix(".tmp")
+            tmp.write_text(json.dumps(marks, indent=1))
+            tmp.replace(WA_MARKS)
+        self.send(200, marks.get(number, {}))
+
+    def clean(self):
+        """Delete (or preview deleting) result folders older than N days."""
+        try:
+            length = min(int(self.headers.get("Content-Length", 0)), 1_000)
+            body = json.loads(self.rfile.read(length) or b"{}")
+            days = int(body.get("days", 30))
+            if not 0 <= days <= 3650:
+                raise ValueError("Days must be between 0 and 3650")
+        except (ValueError, TypeError) as exc:
+            return self.send(400, {"error": str(exc)})
+        with jobs_lock:
+            if running_job():
+                return self.send(409, {"error": "A search is running. Clean up after it finishes."})
+        cmd = [str(ROOT / "clean_leads.sh")] + (["--dry-run"] if body.get("dry_run") else []) + [str(days)]
+        proc = subprocess.run(cmd, cwd=ROOT, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=120)
+        out = ANSI.sub("", proc.stdout + proc.stderr).strip().splitlines()
+        self.send(200 if proc.returncode == 0 else 500, {"ok": proc.returncode == 0, "log": out})
 
 
 def main():

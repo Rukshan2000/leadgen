@@ -5,32 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lead Finder</title>
 <style>
-  :root{--bg:#f6f7f9;--card:#fff;--ink:#1c2230;--mute:#667085;--line:#e4e7ec;--acc:#2f6fed;
+  :root{--bg:#f4f5f7;--card:#fff;--ink:#1c2230;--mute:#667085;--line:#e4e7ec;--acc:#2f6fed;--acc-soft:#eaf1fe;
+        --side:#111827;--side-ink:#d1d5db;--side-mute:#8b93a1;--side-hover:#1f2937;
         --no:#d92d20;--weak:#dc6803;--has:#079455;--unk:#667085}
-  @media (prefers-color-scheme:dark){:root{--bg:#0f1218;--card:#171b23;--ink:#e6e9ef;--mute:#98a2b3;--line:#2a303b}}
+  @media (prefers-color-scheme:dark){:root{--bg:#0f1218;--card:#171b23;--ink:#e6e9ef;--mute:#98a2b3;--line:#2a303b;--acc-soft:#1b2a45;--side:#0a0d12;--side-hover:#171b23}}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
-  .wrap{max-width:1200px;margin:0 auto;padding:24px 16px}
-  h1{margin:0 0 4px;font-size:24px}
-  .sub{color:var(--mute);margin:0 0 20px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
-  .card h2{margin:0 0 12px;font-size:15px}
+  .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+
+  /* Sidebar */
+  .side{background:var(--side);color:var(--side-ink);padding:20px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;gap:20px}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px;font-weight:700;font-size:16px;color:#fff}
+  .brand i{width:30px;height:30px;border-radius:8px;background:var(--acc);display:grid;place-items:center;font-style:normal}
+  .nav-title{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--side-mute);padding:0 10px;margin-bottom:6px}
+  .nav a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:8px;color:var(--side-ink);cursor:pointer;word-break:normal}
+  .nav a:hover{background:var(--side-hover)}
+  .nav a.active{background:var(--acc);color:#fff}
+  .nav a small{font-size:11px;background:rgba(255,255,255,.12);padding:1px 7px;border-radius:99px}
+  .recent a{display:block;padding:7px 10px;border-radius:8px;color:var(--side-ink);cursor:pointer;font-size:13px;word-break:normal}
+  .recent a:hover{background:var(--side-hover)}
+  .recent a span{display:block;font-size:11px;color:var(--side-mute)}
+  .recent a.active{background:var(--side-hover);box-shadow:inset 3px 0 0 var(--acc)}
+  .side-foot{margin-top:auto;font-size:11px;color:var(--side-mute);padding:0 10px}
+
+  /* Main */
+  .main{padding:28px 32px;min-width:0}
+  .view[hidden]{display:none}
+  .head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:12px;margin-bottom:20px}
+  h1{margin:0;font-size:22px}
+  .sub{color:var(--mute);margin:2px 0 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+  .card h2{margin:0 0 4px;font-size:15px}
+  .card p.help{margin:0 0 14px;color:var(--mute);font-size:13px}
   .row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
-  label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute);flex:1;min-width:160px}
+  label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mute);flex:1;min-width:150px}
   input,select,button{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
   button{background:var(--acc);color:#fff;border-color:var(--acc);cursor:pointer;white-space:nowrap}
   button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
-  code.cmd{display:block;margin-top:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow-x:auto;white-space:nowrap}
+  button:disabled{opacity:.6;cursor:wait}
+  pre.log{margin:12px 0 0;max-height:320px;overflow:auto;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:12px;white-space:pre-wrap}
   .drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--mute);cursor:pointer}
   .drop.over{border-color:var(--acc);color:var(--acc)}
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
-  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+  .files{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .file{border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;background:var(--card)}
+  .file:hover{border-color:var(--acc)}
+  .file.active{border-color:var(--acc);background:var(--acc-soft)}
+  .file b{display:block;text-transform:capitalize}
+  .file span{color:var(--mute);font-size:12px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
   .stat b{display:block;font-size:22px}
   .stat span{color:var(--mute);font-size:12px}
+  .filters{position:sticky;top:0;z-index:2}
   .tbl{overflow-x:auto}
-  table{width:100%;border-collapse:collapse;min-width:900px}
-  th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{font-size:12px;color:var(--mute);cursor:pointer;user-select:none;white-space:nowrap}
+  table{width:100%;border-collapse:collapse;min-width:1000px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12px;color:var(--mute);cursor:pointer;user-select:none;white-space:nowrap;background:var(--card)}
   tr.lead{cursor:pointer}
   tr.lead:hover{background:var(--bg)}
   .badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;color:#fff;white-space:nowrap}
@@ -41,84 +71,193 @@
   .bar{width:50px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
   .bar i{display:block;height:100%;background:var(--acc)}
   a{color:var(--acc);text-decoration:none;word-break:break-all}
-  .detail td{background:var(--bg);font-size:13px}
+  .detail td{background:var(--bg);font-size:13px;padding:14px 16px}
   .detail ul{margin:4px 0;padding-left:18px}
   .muted{color:var(--mute)}
-  .empty{text-align:center;color:var(--mute);padding:30px}
+  .CONFIRMED{background:#079455}.LIKELY{background:#2f6fed}.UNLIKELY{background:#98a2b3}.NO_NUMBER{background:#98a2b3}
+  .wa-btn{display:inline-block;background:#25d366;color:#fff;border-radius:8px;padding:6px 12px;font-weight:600;white-space:nowrap;word-break:normal}
+  .wa-btn:hover{background:#1ebe5b}
+  .mark{padding:4px 8px;font-size:12px;background:transparent;color:var(--ink);border-color:var(--line)}
+  .mark.on-yes{background:#079455;border-color:#079455;color:#fff}
+  .mark.on-no{background:var(--no);border-color:var(--no);color:#fff}
+  .mark.on-done{background:var(--acc);border-color:var(--acc);color:#fff}
+  .actions{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:100%;min-height:84px;resize:vertical}
+  tr.dim td{opacity:.5}
+  pre.wa-msg{margin:0;white-space:pre-wrap;font:13px/1.5 system-ui,sans-serif;background:#dcf8c6;color:#111;border-radius:10px;padding:12px 14px;max-width:520px}
+  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .dgrid h3{font-size:13px;margin:0 0 6px}
+  .dgrid h3:not(:first-child){margin-top:14px}
+  .dgrid p{margin:0 0 6px}
+  .pitchline{background:var(--acc-soft);border-left:3px solid var(--acc);padding:8px 10px;border-radius:6px;font-weight:600}
+  @media (max-width:860px){.dgrid{grid-template-columns:1fr}}
+  .empty{text-align:center;color:var(--mute);padding:40px}
+  .menu-btn{display:none}
+
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr}
+    .side{position:fixed;inset:0 auto 0 0;width:250px;z-index:10;transform:translateX(-100%);transition:transform .2s}
+    .side.open{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.4)}
+    .main{padding:16px}
+    .menu-btn{display:inline-block;margin-bottom:12px}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>Lead Finder</h1>
-  <p class="sub">Find businesses that need a website, then review the results here.</p>
-
-  <div class="card">
-    <h2>1. Build a search command</h2>
-    <div class="row">
-      <label>Location<input id="loc" value="Singapore" placeholder="City or country"></label>
-      <label>Business category
-        <input id="cat" list="cats" value="salon" placeholder="e.g. salon">
-        <datalist id="cats">
-          <option>hotel</option><option>villa</option><option>guest house</option><option>clinic</option>
-          <option>dental clinic</option><option>construction</option><option>real estate</option>
-          <option>vehicle rental</option><option>wedding</option><option>tuition</option>
-          <option>photographer</option><option>gym</option><option>salon</option><option>restaurant</option>
-          <option>lawyer</option><option>accountant</option><option>manufacturer</option><option>import export</option>
-        </datalist>
-      </label>
-      <label style="max-width:120px">Leads<input id="num" type="number" min="1" value="30"></label>
-      <button id="run" hidden>Run search</button>
-      <button id="copy" class="ghost">Copy command</button>
+<div class="app">
+  <aside class="side" id="side">
+    <div class="brand"><i>🎯</i>Lead Finder</div>
+    <div>
+      <div class="nav-title">Menu</div>
+      <nav class="nav">
+        <a data-view="search" class="active">🔍 New search</a>
+        <a data-view="saved">📁 Saved searches <small id="navSaved">0</small></a>
+        <a data-view="leads">📋 Leads <small id="navLeads">0</small></a>
+        <a data-view="whatsapp">💬 WhatsApp <small id="navWa">0</small></a>
+      </nav>
     </div>
-    <code class="cmd" id="cmd"></code>
-    <p class="muted" id="hint" style="margin:8px 0 0">Paste it into Terminal. Results are saved in <b>leads/&lt;date&gt;/</b>.</p>
-    <pre id="log" hidden style="margin:12px 0 0;max-height:260px;overflow:auto;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:12px;white-space:pre-wrap"></pre>
-  </div>
-
-  <div class="card">
-    <h2>2. Open results</h2>
-    <div class="row" style="margin-bottom:12px">
-      <label>Saved results (from leads/)
-        <select id="saved"><option value="">No saved results found — run a search, then reload</option></select>
-      </label>
-      <button class="ghost" id="reload">Reload list</button>
+    <div class="recent">
+      <div class="nav-title">Recent</div>
+      <div id="recent"><span class="muted" style="padding:0 10px;font-size:12px">No searches yet</span></div>
     </div>
-    <div class="drop" id="drop">Or drop a <b>.json</b> results file here / click to choose one
-      <input type="file" id="file" accept=".json" hidden>
-    </div>
-  </div>
+    <div class="side-foot">Results are stored in <b>leads/&lt;date&gt;/</b></div>
+  </aside>
 
-  <div id="results" hidden>
-    <div class="stats" id="stats"></div>
-    <div class="card">
-      <div class="row" style="margin-bottom:12px">
-        <label>Search<input id="q" placeholder="Name, phone, location..."></label>
-        <label style="max-width:200px">Website status
-          <select id="status">
-            <option value="">All</option><option>NO_WEBSITE</option><option>WEAK_WEBSITE</option>
-            <option>HAS_WEBSITE</option><option>UNKNOWN</option>
-          </select>
-        </label>
-        <label style="max-width:150px">Priority
-          <select id="prio"><option value="">All</option><option>HOT</option><option>WARM</option><option>COLD</option></select>
-        </label>
-        <label style="max-width:140px">Min score<input id="min" type="number" min="0" max="100" value="0"></label>
-        <label style="max-width:170px">Contact
-          <select id="contact"><option value="">Any</option><option value="1">Has phone or email</option></select>
-        </label>
-        <button class="ghost" id="csv">Export CSV</button>
+  <main class="main">
+    <button class="ghost menu-btn" id="menu">☰ Menu</button>
+
+    <!-- New search -->
+    <section class="view" id="view-search">
+      <div class="head"><div><h1>New search</h1><p class="sub">Find businesses that need a website or a system.</p></div></div>
+      <div class="card">
+        <h2>Search details</h2>
+        <p class="help">Pick a place and a business type. The best leads are ranked first.</p>
+        <div class="row">
+          <label>Location<input id="loc" value="Singapore" placeholder="City or country"></label>
+          <label>Business category
+            <input id="cat" list="cats" value="salon" placeholder="e.g. salon">
+            <datalist id="cats">
+              <option>hotel</option><option>villa</option><option>guest house</option><option>clinic</option>
+              <option>dental clinic</option><option>construction</option><option>real estate</option>
+              <option>vehicle rental</option><option>wedding</option><option>tuition</option>
+              <option>photographer</option><option>gym</option><option>salon</option><option>restaurant</option>
+              <option>lawyer</option><option>accountant</option><option>manufacturer</option><option>import export</option>
+            </datalist>
+          </label>
+          <label style="max-width:120px">Leads<input id="num" type="number" min="1" value="30"></label>
+          <button id="run" disabled>Run search</button>
+        </div>
+        <p class="muted" id="hint" style="margin:8px 0 0">Searches need the web server. Start it with <b>python3 server.py</b> and open http://127.0.0.1:8080.</p>
+        <pre class="log" id="log" hidden></pre>
       </div>
-      <div class="tbl">
-        <table>
-          <thead><tr>
-            <th data-k="lead_score">Score ↓</th><th data-k="name">Name</th><th data-k="website_status">Status</th>
-            <th data-k="priority">Priority</th><th>Best opportunity</th><th data-k="category">Category</th><th data-k="phone">Phone</th><th>Email</th><th>Links</th><th data-k="review_count">Reviews</th>
-          </tr></thead>
-          <tbody id="rows"></tbody>
-        </table>
+    </section>
+
+    <!-- Saved searches -->
+    <section class="view" id="view-saved" hidden>
+      <div class="head">
+        <div><h1>Saved searches</h1><p class="sub">Open a previous search to review its leads.</p></div>
+        <button class="ghost" id="reload">↻ Reload list</button>
       </div>
-    </div>
-  </div>
+      <div class="card">
+        <select id="saved" hidden><option value=""></option></select>
+        <div class="files" id="files"><div class="empty">No saved results found — run a search, then reload.</div></div>
+      </div>
+      <div class="card" id="cleanCard" hidden>
+        <h2>🧹 Clean up old results</h2>
+        <p class="help">Free storage by deleting saved searches older than a number of days. Use <b>0</b> to delete everything, including today. Preview first to see what will go.</p>
+        <div class="row">
+          <label style="max-width:180px">Older than (days)<input id="cleanDays" type="number" min="0" max="3650" value="30"></label>
+          <button class="ghost" id="cleanPreview">Preview</button>
+          <button id="cleanRun" style="background:var(--no);border-color:var(--no)">Delete old results</button>
+        </div>
+        <pre class="log" id="cleanLog" hidden></pre>
+      </div>
+      <div class="card">
+        <h2>Open a file</h2>
+        <p class="help">Have a results file from somewhere else? Load it here.</p>
+        <div class="drop" id="drop">Drop a <b>.json</b> results file here, or click to choose one
+          <input type="file" id="file" accept=".json" hidden>
+        </div>
+      </div>
+    </section>
+
+    <!-- Leads -->
+    <section class="view" id="view-leads" hidden>
+      <div class="head"><div><h1 id="leadsTitle">Leads</h1><p class="sub" id="leadsSub">Open a saved search to see its leads.</p></div></div>
+      <div id="noResults" class="card empty">No search open. Go to <a data-go="saved">Saved searches</a> or start a <a data-go="search">New search</a>.</div>
+      <div id="results" hidden>
+        <div class="stats" id="stats"></div>
+        <div class="card filters">
+          <div class="row">
+            <label>Search<input id="q" placeholder="Name, phone, opportunity..."></label>
+            <label style="max-width:190px">Website status
+              <select id="status">
+                <option value="">All</option><option>NO_WEBSITE</option><option>WEAK_WEBSITE</option>
+                <option>HAS_WEBSITE</option><option>UNKNOWN</option>
+              </select>
+            </label>
+            <label style="max-width:130px">Priority
+              <select id="prio"><option value="">All</option><option>HOT</option><option>WARM</option><option>COLD</option></select>
+            </label>
+            <label style="max-width:110px">Min score<input id="min" type="number" min="0" max="100" value="0"></label>
+            <label style="max-width:170px">Contact
+              <select id="contact"><option value="">Any</option><option value="1">Has phone or email</option></select>
+            </label>
+            <button class="ghost" id="csv">⬇ Export CSV</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0">
+          <div class="tbl">
+            <table>
+              <thead><tr>
+                <th data-k="lead_score">Score ↓</th><th data-k="name">Name</th><th data-k="priority">Priority</th>
+                <th data-k="website_status">Status</th><th>Best opportunity</th><th data-k="category">Category</th>
+                <th data-k="phone">Phone</th><th>Email</th><th>Links</th><th data-k="review_count">Reviews</th>
+              </tr></thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- WhatsApp -->
+    <section class="view" id="view-whatsapp" hidden>
+      <div class="head"><div><h1>WhatsApp outreach</h1><p class="sub" id="waSub">Open a saved search to see its numbers.</p></div></div>
+      <div id="waEmpty" class="card empty">No search open. Go to <a data-go="saved">Saved searches</a> first.</div>
+      <div id="waBody" hidden>
+        <div class="stats" id="waStats"></div>
+        <div class="card">
+          <h2>Message template</h2>
+          <p class="help">Personalised for each business when you click <b>Open chat</b>. Use <b>👁 Preview</b> on a row to see the final message.<br>
+            Placeholders: <b>{name}</b>, <b>{category}</b>, <b>{city}</b>, <b>{compliment}</b> (from rating &amp; reviews), <b>{collab}</b> ("top-rated" only when the rating really is), <b>{suggestion}</b> (website / POS / HR / Invite Plus / InvoGen / ParcelNet by business type), <b>{opportunity}</b>.</p>
+          <textarea id="waTpl" style="min-height:260px"></textarea>
+          <div class="row" style="margin-top:8px"><button class="ghost" id="waReset">↺ Reset to KWINGS MEDIA message</button></div>
+        </div>
+        <div class="card">
+          <p class="help" style="margin-bottom:12px"><b>How status works:</b> WhatsApp does not let apps check whether a number has an account.
+            <b>Confirmed</b> = the business publishes this WhatsApp number. <b>Likely</b> = mobile number. <b>Unlikely</b> = landline.
+            Open the chat to find out for sure (WhatsApp tells you if the number isn't registered), then mark the result.</p>
+          <div class="row">
+            <label>Search<input id="waQ" placeholder="Name or number..."></label>
+            <label style="max-width:190px">Status
+              <select id="waStatus"><option value="">All with a number</option><option>CONFIRMED</option><option>LIKELY</option><option>UNKNOWN</option><option>UNLIKELY</option></select>
+            </label>
+            <label style="max-width:200px">Your marks
+              <select id="waMark"><option value="">Any</option><option value="todo">Not contacted</option><option value="yes">On WhatsApp</option><option value="no">Not on WhatsApp</option><option value="done">Contacted</option></select>
+            </label>
+          </div>
+        </div>
+        <div class="card" style="padding:0">
+          <div class="tbl">
+            <table>
+              <thead><tr><th>Business</th><th>Number</th><th>Status</th><th>Best opportunity</th><th>Actions</th></tr></thead>
+              <tbody id="waRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 </div>
 
 <script>
@@ -126,18 +265,34 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const shq = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
 
-// Command builder
-function buildCmd(){
-  const n = Math.max(1, parseInt($("num").value) || 20);
-  $("cmd").textContent = `cd "/Users/rukshantharindu/Documents/Personal/Compny/lead gen" && ./lead_finder.sh ${shq($("loc").value.trim())} ${shq($("cat").value.trim())} ${n}`;
+// Navigation
+function go(view){
+  document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "view-" + view);
+  document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("active", a.dataset.view === view));
+  $("side").classList.remove("open");
+  if (location.hash !== "#" + view) history.replaceState(null, "", "#" + view);
+  window.scrollTo(0, 0);
 }
-["loc","cat","num"].forEach(id => $(id).addEventListener("input", buildCmd));
-$("copy").onclick = async () => {
-  try { await navigator.clipboard.writeText($("cmd").textContent); $("copy").textContent = "Copied!"; }
-  catch { $("copy").textContent = "Select & copy manually"; }
-  setTimeout(() => $("copy").textContent = "Copy command", 1500);
-};
-buildCmd();
+if (["search","saved","leads","whatsapp"].includes(location.hash.slice(1))) go(location.hash.slice(1));
+document.querySelectorAll("[data-view],[data-go]").forEach(a => a.onclick = () => go(a.dataset.view || a.dataset.go));
+$("menu").onclick = e => { e.stopPropagation(); $("side").classList.toggle("open"); };
+document.addEventListener("click", e => { if (!e.target.closest("#side")) $("side").classList.remove("open"); });
+
+// Saved search cards (main page) + recent list (sidebar)
+function renderFiles(){
+  const files = window.LEAD_FILES || [], cur = $("saved").value;
+  $("navSaved").textContent = files.length;
+  const label = f => `${esc(f.category || "?")} in ${esc(f.location || "?")}`;
+  $("files").innerHTML = files.length ? files.map((f,i) =>
+    `<div class="file ${String(i) === cur ? "active" : ""}" data-i="${i}"><b>${label(f)}</b><span>${esc(f.date)} · ${f.count} leads</span></div>`).join("")
+    : '<div class="empty">No saved results found — run a search, then reload.</div>';
+  $("recent").innerHTML = files.length ? files.slice(0, 8).map((f,i) =>
+    `<a data-i="${i}" class="${String(i) === cur ? "active" : ""}">${label(f)}<span>${esc(f.date)} · ${f.count} leads</span></a>`).join("")
+    : '<span class="muted" style="padding:0 10px;font-size:12px">No searches yet</span>';
+  document.querySelectorAll("#files .file, #recent a").forEach(el => el.onclick = () => {
+    $("saved").value = el.dataset.i; pickSaved(true);
+  });
+}
 
 // Results viewer
 let leads = [], sortKey = "lead_score", sortDir = -1, open = null;
@@ -149,11 +304,19 @@ drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
 drop.ondragleave = () => drop.classList.remove("over");
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); e.dataTransfer.files[0] && load(e.dataTransfer.files[0]); };
 
-function show(data, name){
+function show(data, name, switchView){
   leads = data; open = null;
-  drop.innerHTML = `Showing <b>${esc(name)}</b> (${data.length} leads). Drop or click to open another file.`;
+  const first = data[0] || {};
+  $("leadsTitle").textContent = first.search_category ? `${first.search_category} in ${first.search_location}` : "Leads";
+  $("leadsSub").textContent = `${data.length} leads · ${name}`;
+  $("navLeads").textContent = data.length;
+  waCurrent = name;
+  $("noResults").hidden = true;
   $("results").hidden = false;
+  renderFiles();
   render();
+  renderWa();
+  if (switchView) go("leads");
 }
 
 function load(file){
@@ -163,7 +326,7 @@ function load(file){
       const data = JSON.parse(r.result);
       if (!Array.isArray(data)) throw new Error("Expected a list of leads");
       $("saved").value = "";
-      show(data, file.name);
+      show(data, file.name, true);
     } catch (err) { alert("Could not read file: " + err.message); }
   };
   r.readAsText(file);
@@ -177,15 +340,10 @@ async function detectServer(){
   try { return (await fetch("api/files")).ok; } catch { return false; }
 }
 
-async function loadServerFiles(selectPath){
+async function loadServerFiles(selectPath, switchView){
   const files = await (await fetch("api/files")).json();
   window.LEAD_FILES = files;
-  const sel = $("saved");
-  if (!files.length) { sel.innerHTML = '<option value="">No saved results yet — run a search</option>'; return; }
-  sel.innerHTML = files.map((f,i) =>
-    `<option value="${i}">${esc(f.date)} · ${esc(f.category || "?")} in ${esc(f.location || "?")} · ${f.count} leads</option>`).join("");
-  const idx = selectPath ? Math.max(0, files.findIndex(f => f.path === selectPath)) : 0;
-  sel.value = String(idx); pickSaved();
+  fillSaved(!!files.length, selectPath, switchView);
 }
 
 async function runSearch(){
@@ -204,7 +362,7 @@ async function runSearch(){
       if (job.log.length) { log.textContent += job.log.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
       next = job.next;
     } while (job.status === "running");
-    if (job.status === "done" && job.result) await loadServerFiles(job.result);
+    if (job.status === "done" && job.result) await loadServerFiles(job.result, true);
     else log.textContent += "\nSearch did not produce results.";
   } catch (err) {
     log.textContent += "\nError: " + err.message;
@@ -224,36 +382,210 @@ function loadManifest(selectFirst){
   document.head.appendChild(s);
 }
 
-function fillSaved(selectFirst){
+function fillSaved(selectFirst, selectPath, switchView){
   const files = window.LEAD_FILES || [];
   const sel = $("saved");
-  if (!files.length) {
-    sel.innerHTML = '<option value="">No saved results found — run a search, then reload</option>';
-    return;
+  sel.innerHTML = '<option value=""></option>' + files.map((_, i) => `<option value="${i}">${i}</option>`).join("");
+  renderFiles();
+  if (selectFirst && files.length) {
+    sel.value = String(selectPath ? Math.max(0, files.findIndex(f => f.path === selectPath)) : 0);
+    pickSaved(switchView);
   }
-  sel.innerHTML = files.map((f,i) =>
-    `<option value="${i}">${esc(f.date)} · ${esc(f.category || "?")} in ${esc(f.location || "?")} · ${f.count} leads</option>`
-  ).join("");
-  if (selectFirst) { sel.value = "0"; pickSaved(); }
 }
 
-async function pickSaved(){
+async function pickSaved(switchView){
   const f = (window.LEAD_FILES || [])[+$("saved").value];
   if (!f) return;
-  if (f.leads) return show(f.leads, f.path);
-  try { show(await (await fetch("api/file?path=" + encodeURIComponent(f.path))).json(), f.path); }
+  if (f.leads) return show(f.leads, f.path, switchView);
+  try { show(await (await fetch("api/file?path=" + encodeURIComponent(f.path))).json(), f.path, switchView); }
   catch (err) { alert("Could not load " + f.path); }
 }
 
-$("saved").onchange = pickSaved;
 $("reload").onclick = () => SERVER ? loadServerFiles() : loadManifest(false);
 $("run").onclick = runSearch;
 
+async function cleanUp(dryRun){
+  const days = parseInt($("cleanDays").value), log = $("cleanLog");
+  if (!(days >= 0)) return alert("Enter 0 or more days.");
+  const what = days === 0 ? "ALL saved searches, including today's" : `all saved searches older than ${days} days`;
+  if (!dryRun && !confirm(`Delete ${what}? This cannot be undone.`)) return;
+  ["cleanPreview","cleanRun"].forEach(id => $(id).disabled = true);
+  log.hidden = false; log.textContent = dryRun ? "Checking…" : "Deleting…";
+  try {
+    const res = await fetch("api/clean", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ days, dry_run: dryRun }) });
+    const data = await res.json();
+    log.textContent = data.error || data.log.join("\n");
+    if (!dryRun && res.ok) await loadServerFiles();
+  } catch (err) {
+    log.textContent = "Error: " + err.message;
+  } finally {
+    ["cleanPreview","cleanRun"].forEach(id => $(id).disabled = false);
+  }
+}
+$("cleanPreview").onclick = () => cleanUp(true);
+
+// ---- WhatsApp outreach ----
+let waCurrent = "", waMarks = {}, waPreview = "";
+const WA_TPL_DEFAULT = `Hi *{name}* 👋
+
+We came across your business while exploring {category} businesses in {city}, and {compliment}. {collab}
+
+We are *KWINGS MEDIA.*
+We build smart digital solutions to help your business grow. 🚀
+
+💡 For {name}, we think {suggestion} could make a real difference.
+
+*What are you looking for today?*
+
+1️⃣ Website
+2️⃣ POS
+3️⃣ HR System
+4️⃣ Invite Plus — Event Management
+5️⃣ InvoGen — Cloud Billing
+6️⃣ ParcelNet — Delivery Management
+7️⃣ Something Custom
+
+*Reply with a number, and let's get started! 😊*
+
+🌐 www.kwingsmedia.com`;
+
+// Personalised parts built only from real lead data (nothing is invented).
+function waParts(l){
+  const rating = +l.rating || 0, reviews = +l.review_count || 0;
+  const cat = String(l.category || l.search_category || "local").replace(/_/g, " ").toLowerCase();
+  const city = String(l.search_location || "your area").split(",")[0].trim();
+  const text = `${cat} ${l.search_category || ""} ${(l.types || []).join(" ")}`.toLowerCase();
+  const topRated = rating >= 4.3 && reviews >= 10;
+
+  let compliment;
+  if (topRated) compliment = `we were impressed by your ${rating}★ rating from ${reviews} customer reviews`;
+  else if (rating >= 4 && reviews >= 3) compliment = `we saw that customers speak highly of you (${rating}★)`;
+  else if (reviews >= 5) compliment = `we noticed you already have a strong local presence`;
+  else compliment = `we really liked what you are building`;
+
+  const collab = topRated
+    ? "We're really interested in collaborating with top-rated businesses like yours!"
+    : "We're really interested in collaborating with growing businesses like yours!";
+
+  const product =
+    /restaurant|cafe|coffee|bakery|bar|food|salon|beauty|hair|spa|barber|shop|store|retail|pharmac|supermarket|boutique|cloth|grocery/.test(text) ? "a POS system" :
+    /wedding|event|hotel|resort|villa|banquet|hall|venue/.test(text) ? "Invite Plus for event management" :
+    /deliver|courier|logistic|parcel|wholesale|import|export|distribut/.test(text) ? "ParcelNet delivery management" :
+    /construct|builder|contractor|manufactur|factory|industr|garment/.test(text) ? "an HR system for your team" :
+    /account|tax|audit|lawyer|legal|clinic|dent|doctor|medical|tuition|school|institute|agency|consult/.test(text) ? "InvoGen cloud billing" : "";
+
+  const site =
+    l.website_status === "NO_WEBSITE" ? "a professional website so more customers can find you online" :
+    l.website_status === "WEAK_WEBSITE" ? "a modern, mobile-friendly website" : "";
+
+  const suggestion = site && product ? `${site}, together with ${product},` : site || product || "a custom digital solution";
+  return { name: l.name || "there", category: cat, city, compliment, collab, suggestion,
+           opportunity: ((l.opportunities || [])[0] || "a professional website").toLowerCase() };
+}
+
+function waMessage(l){
+  const p = waParts(l);
+  return $("waTpl").value.replace(/\{(name|category|city|compliment|collab|suggestion|opportunity)\}/g, (_, k) => p[k]);
+}
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch {} }
+};
+$("waTpl").value = store.get("waTplKwings") || WA_TPL_DEFAULT;
+$("waTpl").addEventListener("input", () => { store.set("waTplKwings", $("waTpl").value); renderWa(); });
+$("waReset").onclick = () => { $("waTpl").value = WA_TPL_DEFAULT; store.set("waTplKwings", WA_TPL_DEFAULT); renderWa(); };
+
+// Older result files have no wa_* fields: fall back to the raw phone digits.
+const waInfo = l => {
+  if (l.wa_status) return { number: l.wa_number, status: l.wa_status };
+  const d = String(l.phone || "").split(/[;,/]/)[0].replace(/\D/g, "");
+  return d.length >= 8 ? { number: d, status: "UNKNOWN" } : { number: "", status: "NO_NUMBER" };
+};
+
+async function loadMarks(){
+  if (SERVER) { try { waMarks = await (await fetch("api/whatsapp")).json(); } catch { waMarks = {}; } }
+  else { try { waMarks = JSON.parse(store.get("waMarks") || "{}"); } catch { waMarks = {}; } }
+  renderWa();
+}
+
+async function setMark(number, field, value){
+  const entry = { ...(waMarks[number] || {}) };
+  if (value) entry[field] = value; else delete entry[field];
+  waMarks[number] = entry;
+  renderWa();
+  if (SERVER) {
+    try {
+      const res = await fetch("api/whatsapp", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ number, field, value }) });
+      if (!res.ok) throw new Error((await res.json()).error);
+    } catch (err) { alert("Could not save mark: " + err.message); }
+  } else {
+    store.set("waMarks", JSON.stringify(waMarks));
+  }
+}
+
+function waLink(l, number){
+  return `https://wa.me/${number}?text=${encodeURIComponent(waMessage(l))}`;
+}
+
+function renderWa(){
+  const withNum = leads.map(l => ({ l, ...waInfo(l) })).filter(x => x.number);
+  $("navWa").textContent = withNum.filter(x => x.status === "CONFIRMED" || x.status === "LIKELY").length;
+  $("waEmpty").hidden = !!waCurrent;
+  $("waBody").hidden = !waCurrent;
+  if (!waCurrent) return;
+  $("waSub").textContent = `${$("leadsTitle").textContent} · ${withNum.length} of ${leads.length} leads have a phone number`;
+
+  const cnt = st => withNum.filter(x => x.status === st).length;
+  const mk = (n, f, v) => (waMarks[n] || {})[f] === v;
+  $("waStats").innerHTML = [
+    [cnt("CONFIRMED"), "Confirmed WhatsApp"], [cnt("LIKELY"), "Likely (mobile)"], [cnt("UNLIKELY") + cnt("UNKNOWN"), "Landline / unknown"],
+    [withNum.filter(x => mk(x.number, "on_whatsapp", "yes")).length, "Marked on WhatsApp"],
+    [withNum.filter(x => (waMarks[x.number] || {}).contacted).length, "Contacted"]
+  ].map(([v,t]) => `<div class="stat"><b>${v}</b><span>${t}</span></div>`).join("");
+
+  const q = $("waQ").value.toLowerCase(), st = $("waStatus").value, m = $("waMark").value;
+  const order = { CONFIRMED: 0, LIKELY: 1, UNKNOWN: 2, UNLIKELY: 3 };
+  const list = withNum.filter(x => {
+    const mark = waMarks[x.number] || {};
+    return (!st || x.status === st) &&
+      (!q || `${x.l.name} ${x.number}`.toLowerCase().includes(q)) &&
+      (!m || (m === "todo" ? !mark.contacted : m === "done" ? !!mark.contacted : mark.on_whatsapp === m));
+  }).sort((a, b) => (order[a.status] - order[b.status]) || ((b.l.lead_score || 0) - (a.l.lead_score || 0)));
+
+  $("waRows").innerHTML = list.length ? list.map((x, i) => {
+    const mark = waMarks[x.number] || {};
+    return `<tr class="${mark.on_whatsapp === "no" ? "dim" : ""}">
+      <td><b>${esc(x.l.name)}</b><div class="pitch">${esc(x.l.category || "")}${x.l.lead_score != null ? ` · score ${esc(x.l.lead_score)}` : ""}</div></td>
+      <td>+${esc(x.number)}</td>
+      <td><span class="badge ${esc(x.status)}">${esc(x.status)}</span></td>
+      <td>${esc((x.l.opportunities || [])[0] || "—")}</td>
+      <td><div class="actions">
+        <a class="wa-btn" href="${esc(waLink(x.l, x.number))}" target="_blank" rel="noopener">💬 Open chat</a>
+        <button class="mark" data-preview="${esc(x.number)}">👁 Preview</button>
+        <button class="mark ${mark.on_whatsapp === "yes" ? "on-yes" : ""}" data-n="${esc(x.number)}" data-f="on_whatsapp" data-v="yes" title="Chat opened - number is on WhatsApp">✓ On WA</button>
+        <button class="mark ${mark.on_whatsapp === "no" ? "on-no" : ""}" data-n="${esc(x.number)}" data-f="on_whatsapp" data-v="no" title="WhatsApp said this number isn't registered">✗ Not on WA</button>
+        <button class="mark ${mark.contacted ? "on-done" : ""}" data-n="${esc(x.number)}" data-f="contacted" data-v="${new Date().toISOString().slice(0,10)}" title="${mark.contacted ? "Contacted " + esc(mark.contacted) : "Mark as contacted"}">${mark.contacted ? "📨 " + esc(mark.contacted) : "📨 Contacted"}</button>
+      </div></td>
+    </tr>${waPreview === x.number ? `<tr class="detail"><td colspan="5"><pre class="wa-msg">${esc(waMessage(x.l))}</pre></td></tr>` : ""}`;
+  }).join("") : `<tr><td colspan="5" class="empty">No numbers match these filters.</td></tr>`;
+  $("waRows").querySelectorAll("button[data-preview]").forEach(b => b.onclick = () => {
+    waPreview = waPreview === b.dataset.preview ? "" : b.dataset.preview; renderWa();
+  });
+
+  $("waRows").querySelectorAll("button.mark[data-f]").forEach(b => b.onclick = () => {
+    const { n, f, v } = b.dataset, cur = (waMarks[n] || {})[f];
+    setMark(n, f, f === "contacted" ? (cur ? "" : v) : (cur === v ? "" : v));
+  });
+}
+["waQ","waStatus","waMark"].forEach(id => $(id).addEventListener("input", renderWa));
+$("cleanRun").onclick = () => cleanUp(false);
+
 detectServer().then(ok => {
   SERVER = ok;
+  loadMarks();
   if (ok) {
-    $("run").hidden = false;
-    $("cmd").hidden = true;
+    $("run").disabled = false;
+    $("cleanCard").hidden = false;
     $("hint").textContent = "Runs on the server. Large searches can take a few minutes.";
     loadServerFiles();
   } else {
@@ -290,28 +622,37 @@ function render(){
       l.profile_url && `<a href="${esc(l.profile_url)}" target="_blank" rel="noopener">Profile</a>`
     ].filter(Boolean).join(" · ") || '<span class="muted">—</span>';
     const wc = l.website_check || {};
-    const detail = open === l ? `<tr class="detail"><td colspan="10">
-      <b>Location:</b> ${esc(l.location)}<br>
-      ${l.pitch ? `<b>Pitch:</b> ${esc(l.pitch)}<br>` : ""}
-      ${l.opportunities?.length ? `<b>Opportunities to pitch:</b><ul class="opps">${l.opportunities.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : ""}
-      ${l.review_signals?.length ? `<b>Review insights:</b> ${esc(l.review_signals.join(" · "))}<br>` : ""}
-      ${l.last_review_date ? `<b>Last review:</b> ${esc(l.last_review_date)}<br>` : ""}
-      ${l.photo_count != null ? `<b>Google photos:</b> ${esc(l.photo_count)} · Opening hours listed: ${l.has_hours ? "yes" : "no"}<br>` : ""}
-      ${l.socials?.length ? `<b>Social profiles:</b> ${l.socials.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>`).join(" · ")}<br>` : ""}
-      ${wc.tech ? `<b>Built with:</b> ${esc(wc.tech)}${wc.load_seconds ? ` · loads in ${(+wc.load_seconds).toFixed(1)}s` : ""}<br>` : ""}
-      ${wc.features ? `<b>Website missing:</b> ${esc(Object.entries(wc.features).filter(([,v])=>!v).map(([k])=>k.replace(/_/g," ")).join(", ") || "nothing major")}<br>` : ""}
-      ${l.rating ? `<b>Rating:</b> ${esc(l.rating)} (${esc(l.review_count)} reviews)<br>` : ""}
-      ${wc.http_status ? `<b>Website check:</b> HTTP ${esc(wc.http_status)} · HTTPS ${wc.https ? "yes" : "no"} · Title: ${esc(wc.title || "—")}<br>` : ""}
-      ${wc.issues?.length ? `<b>Issues:</b><ul>${wc.issues.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : ""}
-      ${wc.note ? `<b>Note:</b> ${esc(wc.note)}<br>` : ""}
-      <b>Why this score:</b><ul>${(l.score_reasons||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
-      <span class="muted">Source: ${esc(l.source)}</span>
-    </td></tr>` : "";
+    const li = arr => `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
+    const missing = wc.features ? Object.entries(wc.features).filter(([,v]) => !v).map(([k]) => k.replace(/_/g," ")) : [];
+    const detail = open === l ? `<tr class="detail"><td colspan="10"><div class="dgrid">
+      <div>
+        <h3>💡 What to pitch</h3>
+        ${l.pitch ? `<p class="pitchline">${esc(l.pitch)}</p>` : ""}
+        ${l.opportunities?.length ? li(l.opportunities) : '<p class="muted">No specific opportunities found.</p>'}
+        <h3>📊 Why this score</h3>${li(l.score_reasons || [])}
+      </div>
+      <div>
+        <h3>🏢 Business</h3>
+        <p><b>Location:</b> ${esc(l.location || "—")}<br>
+        ${l.rating ? `<b>Rating:</b> ${esc(l.rating)}★ (${esc(l.review_count)} reviews)<br>` : ""}
+        ${l.last_review_date ? `<b>Last review:</b> ${esc(l.last_review_date)}<br>` : ""}
+        ${l.photo_count != null ? `<b>Google photos:</b> ${esc(l.photo_count)} · <b>Hours listed:</b> ${l.has_hours ? "yes" : "no"}<br>` : ""}
+        ${l.review_signals?.length ? `<b>Review insights:</b> ${esc(l.review_signals.join(" · "))}<br>` : ""}
+        ${l.socials?.length ? `<b>Social:</b> ${l.socials.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https?:\/\/(www\.)?/, ""))}</a>`).join(" · ")}<br>` : ""}
+        <span class="muted">Source: ${esc(l.source)}</span></p>
+        ${wc.http_status || wc.note ? `<h3>🌐 Website</h3><p>
+          ${wc.http_status ? `HTTP ${esc(wc.http_status)} · HTTPS ${wc.https ? "yes" : "no"}${wc.load_seconds ? ` · ${(+wc.load_seconds).toFixed(1)}s load` : ""}${wc.tech ? ` · ${esc(wc.tech)}` : ""}<br>
+          <b>Title:</b> ${esc(wc.title || "—")}<br>` : ""}
+          ${wc.note ? `<b>Note:</b> ${esc(wc.note)}<br>` : ""}
+          ${missing.length ? `<b>Missing:</b> ${esc(missing.join(", "))}` : ""}</p>
+          ${wc.issues?.length ? `<b>Issues:</b>${li(wc.issues)}` : ""}` : ""}
+      </div>
+    </div></td></tr>` : "";
     return `<tr class="lead" data-i="${i}">
       <td><div class="score"><b>${esc(l.lead_score)}</b><div class="bar"><i style="width:${+l.lead_score||0}%"></i></div></div></td>
       <td><b>${esc(l.name)}</b></td>
-      <td><span class="badge ${esc(l.website_status)}">${esc((l.website_status||"").replace("_"," "))}</span></td>
       <td><span class="badge ${esc(l.priority)}">${esc(l.priority || "—")}</span></td>
+      <td><span class="badge ${esc(l.website_status)}">${esc((l.website_status||"").replace("_"," "))}</span></td>
       <td>${esc((l.opportunities||[])[0] || "—")}${(l.opportunities||[]).length > 1 ? `<div class="pitch">+${l.opportunities.length-1} more</div>` : ""}</td>
       <td>${esc(l.category)}</td>
       <td>${l.phone ? `<a href="tel:${esc(l.phone)}">${esc(l.phone)}</a>` : '<span class="muted">—</span>'}</td>

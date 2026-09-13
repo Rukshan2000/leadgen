@@ -2,7 +2,7 @@
 # Delete old lead results to save storage.
 # Usage: ./clean_leads.sh [DAYS]        remove leads/YYYY-MM-DD folders older than DAYS
 #        ./clean_leads.sh --dry-run 7   show what would be removed
-# DAYS defaults to LEADS_RETENTION_DAYS (.env) or 30. 0 disables cleanup.
+# DAYS defaults to LEADS_RETENTION_DAYS (.env) or 30. 0 removes everything, including today.
 
 set -uo pipefail
 
@@ -15,10 +15,14 @@ DRY=false
 [ "${1:-}" = "--dry-run" ] && { DRY=true; shift; }
 DAYS="${1:-${LEADS_RETENTION_DAYS:-30}}"
 case "$DAYS" in ''|*[!0-9]*) err "DAYS must be a whole number."; exit 1 ;; esac
-[ "$DAYS" -eq 0 ] && { log "Cleanup disabled (retention 0 days)."; exit 0; }
 
 # Cutoff date on both macOS (BSD date) and Linux (GNU date).
-CUTOFF=$(date -v-"${DAYS}"d +%Y-%m-%d 2>/dev/null || date -d "-${DAYS} days" +%Y-%m-%d)
+# DAYS=0 uses tomorrow as the cutoff, so today's folder is included.
+if [ "$DAYS" -eq 0 ]; then
+  CUTOFF=$(date -v+1d +%Y-%m-%d 2>/dev/null || date -d "+1 day" +%Y-%m-%d)
+else
+  CUTOFF=$(date -v-"${DAYS}"d +%Y-%m-%d 2>/dev/null || date -d "-${DAYS} days" +%Y-%m-%d)
+fi
 LEADS="$ROOT/leads"
 
 removed=0; freed=0
@@ -38,7 +42,7 @@ for dir in "$LEADS"/????-??-??; do
 done
 
 if [ "$removed" -eq 0 ]; then
-  ok "Nothing older than $DAYS days (before $CUTOFF)."
+  ok "Nothing to remove (no results before $CUTOFF)."
 elif $DRY; then
   ok "Dry run: $removed folder(s), ${freed} KB would be freed."
 else

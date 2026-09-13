@@ -66,6 +66,27 @@ The website check is a single homepage GET — no scanning.
 
 Google returns at most 60 results per query, so several phrasings are tried (`GOOGLE_QUERY_VARIANTS`) until there are twice as many candidates as you asked for. The top-scoring ones are kept.
 
+## WhatsApp outreach
+
+Every lead gets `wa_status`, `wa_number` and a `wa_link` (`https://wa.me/<number>`). WhatsApp offers no allowed way to check whether a number has an account, so the status is an estimate:
+
+- `CONFIRMED`: the business publishes this WhatsApp number (OpenStreetMap tag or a wa.me link on its website)
+- `LIKELY`: mobile number (known ranges for LK, SG, IN, MY, AE, AU, UK, TH, ID, MV)
+- `UNKNOWN`: can't tell mobile from landline (e.g. US/Canada)
+- `UNLIKELY`: landline
+- `NO_NUMBER`
+
+Numbers without a country code use the search location, or `DEFAULT_COUNTRY_CODE` in `.env`.
+
+In the web app, **💬 WhatsApp** lists the numbers for the open search. **Open chat** opens WhatsApp with your message template filled in, and WhatsApp itself tells you if the number isn't registered. Mark each one as *On WA*, *Not on WA* or *Contacted*. Marks are saved to `leads/whatsapp_marks.json` and are kept when old results are cleaned up.
+
+Add WhatsApp data to results saved before this feature:
+
+```bash
+./whatsapp_check.sh                                   # all saved results
+./whatsapp_check.sh leads/2026-09-13/some-file.json   # one file
+```
+
 ## Cleaning old results
 
 After each search, result folders older than `LEADS_RETENTION_DAYS` (default 30, `0` = keep forever) are deleted. Run it manually any time:
