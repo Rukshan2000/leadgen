@@ -168,9 +168,21 @@ search_osm() {
 
   local query="[out:json][timeout:90];${area_sel}(${parts});out center tags $((limit * 3));"
   log "OpenStreetMap: querying Overpass for \"$category\"..."
-  if ! code=$(http_request "$tmp" -X POST "https://overpass-api.de/api/interpreter" \
-        --data-urlencode "data=$query"); then
-    err "Overpass query failed (HTTP $code). The public server may be busy; try again later."
+
+  local mirrors=(
+    "https://overpass-api.de/api/interpreter"
+    "https://overpass.kumi.systems/api/interpreter"
+    "https://overpass.openstreetmap.ru/api/interpreter"
+  )
+  local mirror ok=0
+  for mirror in "${mirrors[@]}"; do
+    if code=$(http_request "$tmp" -X POST "$mirror" --data-urlencode "data=$query"); then
+      ok=1; break
+    fi
+    warn "Overpass mirror $mirror failed (HTTP $code), trying next..."
+  done
+  if [ "$ok" -ne 1 ]; then
+    err "Overpass query failed on all mirrors (last HTTP $code). The public servers may be busy; try again later."
     rm -f "$tmp"; return 0
   fi
 
